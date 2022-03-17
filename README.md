@@ -12,7 +12,7 @@ const result = Jules.engine<Person>([
     ({age}) => age >= 60),
 ]).test(personA)
 
-// result === 1 (the index of the rule)
+// result === [1] (the index of the rule)
 ```
 
 Test multiple criteria at once
@@ -22,28 +22,37 @@ const [resultA, resultB, resultC, resultD] = Jules.engine<Person>([
     ({age}) => age >= 21 && age < 60,
     ({age}) => age >= 60),
 ]).testAll([personA, personB, personC, personD])
+
+// result === [0, 1, 1, 0]
 ```
 
-Specify the expected result (view options here). By default, the expected result is ZERO_OR_MANY.
+Define and test separately.
 
 ```
-const result = Jules.engine<Person>([
+export const engine = Jules.engine<Person>([
     ({age}) => age >= 21 && age < 60,
     ({age}) => age >= 60),
-]).expect(ResultType.ZERO_OR_ONE).test(personA)
-```
-
-```
-// Define and test separately
-const engine = Jules.engine<Person>([
-    ({age}) => age >= 21 && age < 30,
-    ({age}) => age >= 30 && age < 60,
-    ({age, location}) => age >= (location === 'FL' ? 55 : 60),
 ])
 
 const resultA = engine.test(personA)
 const resultB = engine.test(personB)
+```
 
+Specify the expected result (view options here). By default, the expected result is ZERO_OR_MANY. If the expected result is not met, it will throw an error OR trigger your (optionally) specified error handling & fallback. The expected result can be specified when defining the engine, but also at test execution time (which takes precedence).
+
+```
+const engine = Jules.engine<Person>([
+    ({age}) => age >= 21 && age < 60,
+    ({age}) => age >= 60),
+]).expect(ResultType.ONE)
+
+const resultA = engine.test(personA)
+// resultA === [0]
+const resultB = engine.expect(ResultType.ZERO_OR_ONE).test(personB) // override the expected result type on a particular test
+// result B === []
+```
+
+```
 
 const [resultA, resultB, resultC, resultD] = Jules.engine<Person>([
     ({age}) => age >= 21 && age < 30,
