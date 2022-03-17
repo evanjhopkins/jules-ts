@@ -2,14 +2,38 @@
 
 Jules - A simple modular functional rules engine for TypeScript
 
-```
-// Inline engine definition and test
-const result = Jules.engine<Person>([
-    ({age}) => age >= 21 && age < 30,
-    ({age}) => age >= 30 && age < 60,
-    ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-]).expect(RESULT.ONE).test(personA)
+### Simple Usecases
 
+Define a simple engine and use it to test some criteria.
+
+```
+const result = Jules.engine<Person>([
+    ({age}) => age >= 21 && age < 60,
+    ({age}) => age >= 60),
+]).test(personA)
+
+// result === 1 (the index of the rule)
+```
+
+Test multiple criteria at once
+
+```
+const [resultA, resultB, resultC, resultD] = Jules.engine<Person>([
+    ({age}) => age >= 21 && age < 60,
+    ({age}) => age >= 60),
+]).testAll([personA, personB, personC, personD])
+```
+
+Specify the expected result (view options here). By default, the expected result is ZERO_OR_MANY.
+
+```
+const result = Jules.engine<Person>([
+    ({age}) => age >= 21 && age < 60,
+    ({age}) => age >= 60),
+]).expect(ResultType.ZERO_OR_ONE).test(personA)
+```
+
+```
 // Define and test separately
 const engine = Jules.engine<Person>([
     ({age}) => age >= 21 && age < 30,
