@@ -1,6 +1,6 @@
-# jules-ts
+# Jules
 
-Jules - A simple modular functional rules engine for TypeScript
+A simple modular functional rules engine for TypeScript
 
 ## Simple Examples
 
