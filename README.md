@@ -2,7 +2,7 @@
 
 Jules - A simple modular functional rules engine for TypeScript
 
-### Simple Usecases
+## Simple Examples
 
 Define a simple engine and use it to test some criteria.
 
@@ -48,34 +48,22 @@ const engine = Jules.engine<Person>([
 
 const resultA = engine.test(personA)
 // resultA === [0]
+
 const resultB = engine.expect(ResultType.ZERO_OR_ONE).test(personB) // override the expected result type on a particular test
 // result B === []
 ```
 
+## Advanced Examples
+
+Below we will walk through examples of gradually increasing complexity. Each example will introduce a new feature of Jules. Simple engines simply take in an array of 'test' functions. As you will see in the first example below, more complex engines are initialized with an object of which 'rules' is a child. Jules allows for multiple ways of initializing an engine to keep the engine code as simple as possobile for the given usecase.
+
+### Assing ID to rules
+
+By default, rules are identified by their index in the rules array. While rule IDs are optionl, all rule definition must be consistent (either all have IDs or none have IDs). Also by default, the engine returns the IDs of the 'winning' rules in the results array. This means if you set Rule IDs, those IDs will be the default Result for the winning Rules.
+
 ```
-
-const [resultA, resultB, resultC, resultD] = Jules.engine<Person>([
-    ({age}) => age >= 21 && age < 30,
-    ({age}) => age >= 30 && age < 60,
-    ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-]).testAll([personA, personB, personC, personD])
-
-const engine = Jules.engine<Person>([
-    ({age}) => age >= 21 && age < 30,
-    ({age}) => age >= 30 && age < 60,
-    ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-])
-
-const engine1 = new Engine<{age: number, location: string}>([
-    ({age}) => age >= 21 && age < 30,
-    ({age}) => age >= 30 && age < 60,
-    ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-])
-
-const result1 = engine1.run({age: 26, location: 'PA'})
-// => 0
-
-const engine2 = new Engine<{age: number, location: string}>([
+const engine = Jules.engine<Person>({
+    rules: [
     {
         id: 'JUNIOR',
         test: ({age}) => age >= 21 && age < 30
@@ -84,88 +72,68 @@ const engine2 = new Engine<{age: number, location: string}>([
         id: 'STANDARD',
         test: ({age}) => age >= 30 && age < 60
     },
-    {
-        id: 'SENIOR',
-        test: ({age, location}) => age >= (location === 'FL' ? 55 : 60)
-    },
-])
-const result2 = engine2.run({age: 26, location: 'PA'})
-// => JUNIOR
+]})
 
-const engine3 = new Engine<{age: number, location: string}>([
+const result = engine.test(personA)
+// result === 'STANDARD'
+```
+
+### Interdependent rules with 'and' & 'andNots'
+
+Conditions allow you to make rules dependent on the rusult of other rules. Conditions rely on Rule IDs when defining conditions.
+
+```
+const engine = Jules.engine<Person, string>({
+    rules: [
+    {
+        id: 'RULE_A',
+        test: ({age}) => age >= 21,
+        conditions: [
+            { expect: true, for: 'JUNIOR' },
+            { expect: false, for: 'JUNIOR' },
+            { expect: false. for: {if: 'RULE_B', than: 'RULE_A', else: 'RULE_C'}}
+        ]
+    },
+    ...other rules...
+]})
+```
+
+### Custom rule result
+
+By default, a rule will return its ID as its result. You can optionally specify what you want this result to be. It can be a fixed value (such as a string or object), OR it can be a function that returns the result. When defining a result function, you have access to the same criteria as the test function.
+
+```
+const engine = Jules.engine<Person, string>({
+    rules: [
     {
         id: 'JUNIOR',
         test: ({age}) => age >= 21 && age < 30,
-        result: 'Junior Membership'
+        // No 'result' key specified, so will default to ID (JUNIOR)
     },
     {
         id: 'STANDARD',
         test: ({age}) => age >= 30 && age < 60,
-        result: 'Standard Membership'
+        result: 'Standard Membership' // Specify a result value
     },
     {
         id: 'SENIOR',
-        test: ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-        result: 'Senior Membership'
+        test: ({age, location}) => age >= 60),
+        result: (person) => getBillingCode(person.location, Membership.Senior) // Specify a function that produces the result. Has access to criteria.
 
     },
-])
+]})
 
-const result3 = engine3.run({age: 26, location: 'PA'})
-// => Junior Membership
+// Rule 'JUNIOR' will return 'JUNIOR' as its result
+// Rule 'STANDARD' will return 'Standard Membership' as its result
+// Rule 'SENIOR' will return the return value of getBillingCode(...) for its result.
+```
 
-const engine4 = new Engine<{age: number, location: string}>([
-    {
-        id: 'JUNIOR',
-        test: ({age}) => age >= 21 && age < 30,
-        result: ({location}) => getBillingCode({location, level: Level.JUNIOR}),
-    },
-    {
-        id: 'STANDARD',
-        test: ({age}) => age >= 30 && age < 60,
-        result: ({location}) => getBillingCode({location, level: Level.STANDARD}),
-    },
-    {
-        id: 'SENIOR',
-        test: ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-        result: ({location}) => getBillingCode({location, level: Level.SENIOR}),
-    },
-])
+### Define 'Facts'
 
-const result4 = engine4.run({age: 26, location: 'PA'})
-// => PA576
+Facts allow you to isolate key flags for your engine. Facts are functions that have access to the same criteria test functions have access to. Facts can be used in conditions via their ID in exactly the same way you use rule IDs in conditions. Facts can also be accessed in your test functions. Lastly, Facts allow you to clearly define shared logic that rules will consume.
 
-const engine5 = new Engine<{age: number, location: string}>([
-    {
-        id: 'JUNIOR',
-        test: ({age}) => age >= 21 && age < 30,
-        result: ({location}) => getBillingCode({location, level: Level.JUNIOR}),
-        andNot: ['CALIFORNIA'],
-    },
-    {
-        id: 'STANDARD',
-        test: ({age}) => age >= 30 && age < 60,
-        result: ({location}) => getBillingCode({location, level: Level.STANDARD}),
-        andNot: ['CALIFORNIA'],
-    },
-    {
-        id: 'SENIOR',
-        test: ({age, location}) => age >= (location === 'FL' ? 55 : 60),
-        result: ({location}) => getBillingCode({location, level: Level.SENIOR}),
-        andNot: ['CALIFORNIA'],
-    },
-    {
-        id: 'CALIFORNIA',
-        test: ({location}) => location === 'CA',
-        result: ({location}) => getBillingCode({location, level: Level.CALIFORNIA}),
-    },
-])
-
-const result5 = engine5.run({age: 26, location: 'CA'})
-// => CA102
-
-
-const engine6 = new Engine<{age: number, location: string}>({
+```
+const engine = Jules.engine<Person, string>({
     facts: [
         {id: 'IN_US', test: ({location}) => states.includes(location)},
     ],
@@ -173,27 +141,19 @@ const engine6 = new Engine<{age: number, location: string}>({
         {
             id: 'JUNIOR',
             test: ({age}, facts) => age >= 21 && age < 30,
-            andNot: ['CALIFORNIA'],
-            and: ['IN_US'],// you can simply refence rules in and / andNots
         },
         {
             id: 'STANDARD',
-            test: ({age}, facts) => age >= 30 && age < 60 && facts['IN_US'],// you also have access to facts in your test fn
-            andNot: ['CALIFORNIA'],
+            test: ({age}, facts) => age >= 30 && age < 60 && facts['IN_US'],
         },
         {
             id: 'SENIOR',
             test: ({age, location}, facts) => age >= (location === 'FL' ? 55 : 60),
-            andNot: ['CALIFORNIA'],
-            and: ['IN_US'],
-        },
-        {
-            id: 'CALIFORNIA',
-            test: ({location}, facts) => location === 'CA',
+            conditions: [
+                {expect: true, for: 'IN_US'},
+            ]
         },
     ]
 })
 
-const result6 = engine5.run({age: 26, location: 'Cabo'})
-// => undefined
 ```
