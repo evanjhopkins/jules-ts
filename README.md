@@ -1,6 +1,6 @@
 # Jules
 
-A simple modular functional rules engine for TypeScript
+A tiny, dead simple, dependency free, scalable, rules engine for TypeScript.
 
 ## Simple Examples
 

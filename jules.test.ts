@@ -1,4 +1,4 @@
-import { Engine } from './jules'
+import Jules, {ResultType} from './jules'
 
 const states: string[] = []
 const getBillingCode = (...args: any) => 'x'
